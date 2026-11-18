@@ -1,12 +1,28 @@
 #include <Arduino.h>
 
+const int LDR_PIN = 34;
+const int LED_PIN = 21;
+const int lightTreshold = 2000;
+
 void setup() {
-  pinMode(LED_BUILTIN, OUTPUT);
+  Serial.begin(115200);
+  analogSetAttenuation(ADC_11db);
+  pinMode(LED_PIN, OUTPUT);
 }
 
 void loop() {
-  digitalWrite(LED_BUILTIN, HIGH);  // LED on
-  delay(500);                      // 1 second
-  digitalWrite(LED_BUILTIN, LOW);   // LED off
-  delay(500);                      // 1 second
+  int lightLevel = analogReadMilliVolts(LDR_PIN);
+
+  if (lightLevel <  lightTreshold) {
+    digitalWrite(LED_PIN, HIGH);
+  } else {
+    digitalWrite(LED_PIN, LOW);
+  }
+
+
+  #ifdef DEBUG
+  Serial.printf("%d mV\n", lightLevel);
+  #endif
+
+  delay(500);
 }
