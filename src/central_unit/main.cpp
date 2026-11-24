@@ -1,18 +1,20 @@
 #include <Arduino.h>
 #include <LiquidCrystal.h>
+
 #include "symbol.hpp"
 
-
-const uint8_t test_symbol_data[8] = {
-  0b00000,
-  0b01010,
-  0b01010,
-  0b00000,
-  0b10001,
-  0b01110,
-  0b00000,
-  0b00000
+// Enum for different UI states, which tell loop what code to execute
+enum RenderingState {
+  START_ANIMATION,  // Plays brief animation upon starting the device
+  PASSIVE,          // Shows most relevant tag info
+  TAG_EDITING       // UI for selecting and changing tag countdowns
 };
+
+// Declare UI state variable
+RenderingState current_rendering_state;
+
+const uint8_t test_symbol_data[8] = {0b00000, 0b01010, 0b01010, 0b00000,
+                                     0b10001, 0b01110, 0b00000, 0b00000};
 
 Symbol test_symbol(test_symbol_data);
 
@@ -36,40 +38,50 @@ void setup() {
 
   lcd.begin(16, 2);
 
-  lcd.createChar(0, test_symbol.get_data());
+  lcd.createChar(0, test_symbol.get_data());  // Make custom symbol
 
   lcd.setCursor(0, 0);
-  for (uint8_t i = 0; i < 16; i++)
-  {
-    lcd.write((uint8_t)0);
+  for (uint8_t i = 0; i < 16; i++) {
+    lcd.write((uint8_t)CGRAM_test_slot);
   }
-  
+
   lcd.setCursor(0, 1);
-  for (uint8_t i = 0; i < 16; i++)
-  {
-    lcd.write((uint8_t)0);
+  for (uint8_t i = 0; i < 16; i++) {
+    lcd.write((uint8_t)CGRAM_test_slot);
   }
 
-  lcd.setCursor(0, 0);
-  lcd.write((uint8_t)CGRAM_test_slot);
+  // Begin start animation
+  current_rendering_state = START_ANIMATION;
 }
 
 void loop() {
+  // other logic goes here
+  //
+  //
 
-  for (uint8_t x = 0; x < 5; x++) {
-    for (uint8_t y = 0; y < 8; y++) {
-      test_opacity_symbol.set_pixel(x, y, (opacity + x + y) % 101);
-    }
-  }
+  // Begin rendering phase
+  switch (current_rendering_state) {
+    case START_ANIMATION:
+      for (uint8_t x = 0; x < 5; x++) {
+        for (uint8_t y = 0; y < 8; y++) {
+          test_opacity_symbol.set_pixel(x, y, (opacity + y * 12) % 101);
+        }
+      }
 
-  opacity_counter++;
-  if (opacity_counter % 5 == 0)
-  {
-    opacity = (opacity + 1) % 101;
+      opacity_counter++;
+      if (opacity_counter % 10 == 0) {
+        opacity = (opacity + 1) % 101;
+      }
+
+      test_opacity_symbol.write_data(test_buffer);
+      lcd.createChar(CGRAM_test_slot, test_buffer);
+
+      break;
+    case PASSIVE:
+      // TODO: passive visuals
+      break;
+    case TAG_EDITING:
+      // TODO: tag editing visuals
+      break;
   }
-  
-  
-  test_opacity_symbol.write_data(test_buffer);
-  lcd.createChar(CGRAM_test_slot, test_buffer);
-  
 }

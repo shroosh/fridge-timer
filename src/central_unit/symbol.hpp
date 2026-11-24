@@ -63,7 +63,7 @@ struct OpacitySymbol {
 
     // Large step size coprime with 39 so all on/off values don't appear
     // contiguous.
-    time_ = (time_ + 39) % 100;
+    time_ = (time_ + 29) % 100;
   }
 
  private:
