@@ -1,3 +1,5 @@
+#define DEBUG 0
+
 #include <Arduino.h>
 #include <LiquidCrystal.h>
 
@@ -149,10 +151,22 @@ void onReceive(const esp_now_recv_info_t *info, const uint8_t *data, int len) {
     switch (msg.state)
     {
     case State::ACTIVATE:
-      // TODO: Code here
+      Message activate1 = {Type::TAG1, State::ACTIVATE};
+      Message activate2 = {Type::TAG2, State::ACTIVATE};
+      esp_now_send(broadcastAddress, (uint8_t*)&activate1, sizeof(Message));
+      esp_now_send(broadcastAddress, (uint8_t*)&activate2, sizeof(Message));
+      #ifdef DEBUG
+      Serial.println("ACTIVE");
+      #endif
       break;
     case State::DEACTIVATE:
-      // TODO: Code here
+      Message deactivate1 = {Type::TAG1, State::DEACTIVATE};
+      Message deactivate2 = {Type::TAG2, State::DEACTIVATE};
+      esp_now_send(broadcastAddress, (uint8_t*)&deactivate1, sizeof(Message));
+      esp_now_send(broadcastAddress, (uint8_t*)&deactivate2, sizeof(Message));
+      #ifdef DEBUG
+      Serial.println("ACTIVE");
+      #endif
       break;
     case State::CHECK_LIGHT:
       // TODO: Code here
@@ -165,6 +179,10 @@ void onReceive(const esp_now_recv_info_t *info, const uint8_t *data, int len) {
 }
 
 void setup() {
+  #ifdef DEBUG
+  Serial.begin(115200);
+  #endif
+
   // Turn on virtual ground pins BEFORE starting the LCD
   pinMode(25, OUTPUT);
   digitalWrite(25, LOW);  // A1 -> Contrast (V0)
