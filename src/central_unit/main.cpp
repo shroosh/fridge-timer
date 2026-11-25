@@ -33,11 +33,189 @@ uint8_t B_CGRAM_slots[4] = {0, 1, 2, 3};
 // Pins match: RS=13, E=27, D4=33, D5=15, D6=32, D7=14
 LiquidCrystal lcd(13, 27, 33, 15, 32, 14);
 
+const uint8_t broadcastAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+constexpr uint32_t SECONDS_PER_DAY = 86400UL;
+constexpr uint8_t MAX_TIMER_DAYS = 99;
+constexpr uint8_t BUTTON_SELECT_PIN = 18;
+constexpr uint8_t BUTTON_PLUS_PIN = 19;
+constexpr uint8_t BUTTON_MINUS_PIN = 22;
+constexpr uint8_t BUTTON_RESET_PIN = 23;
+
+struct Timer {
+  Type tag;
+  uint8_t setDays;
+  uint32_t remainingSeconds;
+  uint32_t lastTickMs;
+  bool running;
+  bool hasSentState;
+  bool lastSentWarning;
+  bool hasAttemptedSend;
+  uint32_t lastSendAttemptMs;
+};
+
+struct Button {
+  uint8_t pin;
+  bool lastReading;
+  bool stableReading;
+  uint32_t lastChangeMs;
+};
+
+Timer timers[2] = {
+  {Type::TAG1, 0, 0, 0, false, false, false, false, 0},
+  {Type::TAG2, 0, 0, 0, false, false, false, false, 0}
+};
+Button buttons[4] = {
+  {BUTTON_SELECT_PIN, HIGH, HIGH, 0},
+  {BUTTON_PLUS_PIN, HIGH, HIGH, 0},
+  {BUTTON_MINUS_PIN, HIGH, HIGH, 0},
+  {BUTTON_RESET_PIN, HIGH, HIGH, 0}
+};
+uint8_t selected_timer = 0;
+bool timer_screen_dirty = true;
+
 void set_rendering_state(RenderingState new_state) {
   current_rendering_state = new_state;
   state_start_ms = millis();
 
   lcd.clear();
+}
+
+void beginButton(Button& button) {
+  pinMode(button.pin, INPUT_PULLUP);
+  button.lastReading = digitalRead(button.pin);
+  button.stableReading = button.lastReading;
+  button.lastChangeMs = millis();
+}
+
+bool wasPressed(Button& button, uint32_t now) {
+  bool reading = digitalRead(button.pin);
+  if (reading != button.lastReading) {
+    button.lastReading = reading;
+    button.lastChangeMs = now;
+  }
+
+  if (now - button.lastChangeMs >= 30 &&
+      button.stableReading != button.lastReading) {
+    button.stableReading = button.lastReading;
+    return button.stableReading == LOW;
+  }
+  return false;
+}
+
+void restartTimer(Timer& timer, uint32_t now) {
+  timer.remainingSeconds = static_cast<uint32_t>(timer.setDays) * SECONDS_PER_DAY;
+  timer.lastTickMs = now;
+  timer.running = true;
+  timer_screen_dirty = true;
+}
+
+void resetSelectedTimer(uint32_t now) {
+  Timer& timer = timers[selected_timer];
+  timer.setDays = 0;
+  timer.remainingSeconds = 0;
+  timer.running = false;
+  timer.lastTickMs = now;
+  timer_screen_dirty = true;
+}
+
+void handleButtons(uint32_t now) {
+  if (wasPressed(buttons[0], now)) {
+    selected_timer = (selected_timer + 1) % 2;
+    timer_screen_dirty = true;
+  }
+
+  Timer& timer = timers[selected_timer];
+  if (wasPressed(buttons[1], now) && timer.setDays < MAX_TIMER_DAYS) {
+    ++timer.setDays;
+    restartTimer(timer, now);
+  }
+  if (wasPressed(buttons[2], now) && timer.setDays > 1) {
+    --timer.setDays;
+    restartTimer(timer, now);
+  }
+  if (wasPressed(buttons[3], now)) {
+    resetSelectedTimer(now);
+  }
+}
+
+void updateTimers(uint32_t now) {
+  for (Timer& timer : timers) {
+    if (!timer.running) continue;
+
+    while (now - timer.lastTickMs >= 1000UL) {
+      timer.lastTickMs += 1000UL;
+      if (timer.remainingSeconds > 0) {
+        --timer.remainingSeconds;
+        timer_screen_dirty = true;
+      }
+    }
+  }
+}
+
+void sendTimerStates(uint32_t now) {
+  for (Timer& timer : timers) {
+    bool warning = timer.running && timer.remainingSeconds < SECONDS_PER_DAY;
+    bool stateChanged = !timer.hasSentState || warning != timer.lastSentWarning;
+    bool retryDue = timer.hasAttemptedSend &&
+                    now - timer.lastSendAttemptMs >= 5000UL;
+    if (!stateChanged && !retryDue) continue;
+    if (timer.hasAttemptedSend && now - timer.lastSendAttemptMs < 1000UL) continue;
+
+    Message msg = {
+      timer.tag,
+      warning ? State::ACTIVATE : State::DEACTIVATE
+    };
+    timer.lastSendAttemptMs = now;
+    timer.hasAttemptedSend = true;
+    esp_err_t result = esp_now_send(
+      broadcastAddress, reinterpret_cast<const uint8_t*>(&msg), sizeof(msg));
+    if (result == ESP_OK) {
+      timer.hasSentState = true;
+      timer.lastSentWarning = warning;
+    } else {
+      Serial.printf("ESP-NOW send failed for tag %u: %d\n",
+                    timer.tag == Type::TAG1 ? 1 : 2, result);
+    }
+  }
+}
+
+void drawTimerScreen() {
+  for (uint8_t i = 0; i < 2; ++i) {
+    const Timer& timer = timers[i];
+    char line[17] = "                ";
+    char marker = i == selected_timer ? '>' : ' ';
+    line[0] = marker;
+    line[1] = static_cast<char>('1' + i);
+    line[2] = ' ';
+
+    if (!timer.running) {
+      line[3] = 'O';
+      line[4] = 'F';
+      line[5] = 'F';
+    } else {
+      uint32_t days = timer.remainingSeconds / SECONDS_PER_DAY;
+      uint32_t hours = (timer.remainingSeconds % SECONDS_PER_DAY) / 3600UL;
+      uint32_t minutes = (timer.remainingSeconds % 3600UL) / 60UL;
+      uint32_t seconds = timer.remainingSeconds % 60UL;
+      if (days > MAX_TIMER_DAYS) days = MAX_TIMER_DAYS;
+      line[3] = static_cast<char>('0' + days / 10);
+      line[4] = static_cast<char>('0' + days % 10);
+      line[5] = 'D';
+      line[6] = ' ';
+      line[7] = static_cast<char>('0' + hours / 10);
+      line[8] = static_cast<char>('0' + hours % 10);
+      line[9] = ':';
+      line[10] = static_cast<char>('0' + minutes / 10);
+      line[11] = static_cast<char>('0' + minutes % 10);
+      line[12] = ':';
+      line[13] = static_cast<char>('0' + seconds / 10);
+      line[14] = static_cast<char>('0' + seconds % 10);
+    }
+
+    lcd.setCursor(0, i);
+    lcd.print(line);
+  }
+  timer_screen_dirty = false;
 }
 
 void start_animation(uint32_t elapsed_ms) {
@@ -160,62 +338,20 @@ void start_animation(uint32_t elapsed_ms) {
 
 
 
-// Wifi variables
-const uint8_t broadcastAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}; // MAC
-Message activate1 = {Type::TAG1, State::ACTIVATE};
-Message activate2 = {Type::TAG2, State::ACTIVATE};
-Message deactivate1 = {Type::TAG1, State::DEACTIVATE};
-Message deactivate2 = {Type::TAG2, State::DEACTIVATE};
-volatile bool pendingActivate = false;
-volatile bool pendingDeactivate = false;
-
 void onReceive(const esp_now_recv_info_t *info, const uint8_t *data, int len) {
+  if (len != sizeof(Message)) return;
+
   Message msg;
   memcpy(&msg, data, sizeof(msg));
-  if (msg.type == Type::CENTRAL_UNIT) {
-    switch (msg.state)
-    {
-    case State::ACTIVATE:
-      pendingActivate = true;
-      #ifdef DEBUG
-      Serial.println("ACTIVE"); 
-      #endif
-      break;
-    case State::DEACTIVATE:
-      pendingDeactivate = true;
-      #ifdef DEBUG
-      Serial.println("DEACTIVE");
-      #endif
-      break;
-    case State::CHECK_LIGHT:
-      // TODO: Code here
-      break;
-    
-    default:
-      break;
-    }
-  }
-}
-
-void sendToTags() {
-  if (pendingActivate) {
-    pendingActivate = false;
-    esp_now_send(broadcastAddress, (uint8_t*)&activate1, sizeof(Message));
-    delay(5);  // small gap so the queue isn't overrun
-    esp_now_send(broadcastAddress, (uint8_t*)&activate2, sizeof(Message));
-  }
-  if (pendingDeactivate) {
-    pendingDeactivate = false;
-    esp_now_send(broadcastAddress, (uint8_t*)&deactivate1, sizeof(Message));
-    delay(5);
-    esp_now_send(broadcastAddress, (uint8_t*)&deactivate2, sizeof(Message));
+  if (msg.destination == Type::CENTRAL_UNIT) {
+    #ifdef DEBUG
+    Serial.printf("Tag reported state %u\n", static_cast<unsigned>(msg.state));
+    #endif
   }
 }
 
 void setup() {
-  #ifdef DEBUG
   Serial.begin(115200);
-  #endif
 
   // Turn on virtual ground pins BEFORE starting the LCD
   pinMode(25, OUTPUT);
@@ -227,34 +363,43 @@ void setup() {
 
   lcd.begin(16, 2);
 
+  for (Button& button : buttons) beginButton(button);
+  uint32_t now = millis();
+  for (Timer& timer : timers) timer.lastTickMs = now;
+
   // Wifi setup
-  setupWifi(broadcastAddress, onReceive);
+  esp_err_t wifiResult = setupWifi(broadcastAddress, onReceive);
+  if (wifiResult != ESP_OK) {
+    Serial.printf("ESP-NOW setup failed: %d\n", wifiResult);
+  }
 
   // Begin start animation
   set_rendering_state(START_ANIMATION);
 }
 
 void loop() {
-  // other logic goes here
-  //
-  //
-  sendToTags();
+  uint32_t now = millis();
+  handleButtons(now);
+  updateTimers(now);
+  sendTimerStates(now);
 
   // Begin rendering phase
-  uint32_t state_elapsed_ms = millis() - state_start_ms;
+  uint32_t state_elapsed_ms = now - state_start_ms;
 
   switch (current_rendering_state) {
     case START_ANIMATION: {
-
       start_animation(state_elapsed_ms);
-
+      if (state_elapsed_ms >= 5000UL) {
+        set_rendering_state(PASSIVE);
+        timer_screen_dirty = true;
+      }
       break;
     }
     case PASSIVE:
-      // TODO: passive visuals
+      if (timer_screen_dirty) drawTimerScreen();
       break;
     case TAG_EDITING:
-      // TODO: tag editing visuals
+      if (timer_screen_dirty) drawTimerScreen();
       break;
   }
 }

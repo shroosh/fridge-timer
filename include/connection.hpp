@@ -1,24 +1,27 @@
 #include <esp_now.h>
 #include <WiFi.h>
+#include <string.h>
 
-enum class State {ACTIVATE, DEACTIVATE, CHECK_LIGHT};
-enum class Type {CENTRAL_UNIT, TAG1, TAG2};
+enum class State : uint8_t {ACTIVATE, DEACTIVATE, CHECK_LIGHT};
+enum class Type : uint8_t {CENTRAL_UNIT, TAG1, TAG2};
 
-typedef struct {
-  Type type;   // 0 = from central, 1 = from node
+struct Message {
+  Type destination;
   State state;
-} Message;
+};
 
-void setupWifi(const uint8_t (&mac)[6], esp_now_recv_cb_t onRecieve) {
-    WiFi.mode(WIFI_STA);
+esp_err_t setupWifi(const uint8_t (&mac)[6], esp_now_recv_cb_t onReceive) {
+  if (!WiFi.mode(WIFI_STA)) return ESP_FAIL;
 
-    esp_now_init();
+  esp_err_t result = esp_now_init();
+  if (result != ESP_OK) return result;
 
-    esp_now_register_recv_cb(onRecieve);
+  result = esp_now_register_recv_cb(onReceive);
+  if (result != ESP_OK) return result;
 
-    esp_now_peer_info_t peer = {};
-    memcpy(peer.peer_addr, mac, 6);
-    peer.channel = 0;
-    peer.encrypt = false;
-    esp_now_add_peer(&peer);
+  esp_now_peer_info_t peer = {};
+  memcpy(peer.peer_addr, mac, 6);
+  peer.channel = 0;
+  peer.encrypt = false;
+  return esp_now_add_peer(&peer);
 }
