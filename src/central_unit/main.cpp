@@ -178,7 +178,7 @@ void onReceive(const esp_now_recv_info_t *info, const uint8_t *data, int len) {
     case State::ACTIVATE:
       pendingActivate = true;
       #ifdef DEBUG
-      Serial.println("ACTIVE");
+      Serial.println("ACTIVE"); 
       #endif
       break;
     case State::DEACTIVATE:

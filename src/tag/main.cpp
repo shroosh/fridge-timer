@@ -6,11 +6,11 @@ const uint8_t centralAddress[] = {0x44, 0x17, 0x93, 0x5C, 0x0A, 0x70}; // MAC
 const int LED_PIN = 21;                   // Pin number
 const int SPEAKER_PIN = 23;               // Pin number
 const int LDR_PIN = 34;                   // Pin number
-const int LIGHT_TRESHOLD = 2000;          // mV
+const int LIGHT_TRESHOLD = 1500;          // mV
 const unsigned long BEEP_INTERVAL = 500;  // ms
 const int BEEP_FREQ = 3500;               // Hz
 const unsigned long LIGHT_CHANGE_INTERVAL = 2000; // ms
-const Type MY_TAG = Type::TAG1;
+const Type MY_TAG = Type::TAG2;
 const Message ACTIVATE_MSG = {Type::CENTRAL_UNIT, State::ACTIVATE};
 const Message DEACTIVATE_MSG = {Type::CENTRAL_UNIT, State::DEACTIVATE};
 
