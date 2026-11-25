@@ -125,56 +125,104 @@ void set_rendering_state(RenderingState new_state) {
 }
 
 void start_animation(uint32_t elapsed_ms) {
-  // Write B characters to screen
-  lcd.setCursor(0,0);
-  lcd.write(B_CGRAM_slots[0]);
-  lcd.write(B_CGRAM_slots[1]);
-  lcd.setCursor(0,1);
-  lcd.write(B_CGRAM_slots[2]);
-  lcd.write(B_CGRAM_slots[3]);
-  lcd.setCursor(2,0);
-  lcd.write(B_CGRAM_slots[0]);
-  lcd.write(B_CGRAM_slots[1]);
-  lcd.setCursor(2,1);
-  lcd.write(B_CGRAM_slots[2]);
-  lcd.write(B_CGRAM_slots[3]);
-  lcd.setCursor(4,0);
-  lcd.write(B_CGRAM_slots[0]);
-  lcd.write(B_CGRAM_slots[1]);
-  lcd.setCursor(4,1);
-  lcd.write(B_CGRAM_slots[2]);
-  lcd.write(B_CGRAM_slots[3]);
-  
-  // Update symbol buffers, load into CGRAM
-  for (uint8_t i = 0; i<4; i++) {
-    B_parts[i].write_data(B_buffers[i]); 
-    lcd.createChar(B_CGRAM_slots[i], B_buffers[i]);
-  }
+  if (elapsed_ms < 3500) { //FADE STAGE
 
-  // Element count
-  constexpr size_t path_len = sizeof(B_anim_path) / sizeof(B_anim_path[0]);
-
-  // Guard
-  if (B_anim_path_progress > path_len) {
-    return;
-  }
-
-  size_t i = 0;
-  size_t bound = std::min(B_anim_path_progress, path_len);
-
-  while (i < bound) {
-      
-    // Get pixel location
-    uint8_t path_part = B_anim_path[i].first;
-    std::pair<uint8_t, uint8_t> coords = B_anim_path[i].second;
-
-    //Set opacity
-    B_parts[path_part].set_pixel(coords.first, coords.second, 100);
-
-    i++;
-  }
+    // Write B characters to screen
+    lcd.setCursor(0,0);
+    lcd.write(B_CGRAM_slots[0]);
+    lcd.write(B_CGRAM_slots[1]);
+    lcd.setCursor(0,1);
+    lcd.write(B_CGRAM_slots[2]);
+    lcd.write(B_CGRAM_slots[3]);
+    lcd.setCursor(2,0);
+    lcd.write(B_CGRAM_slots[0]);
+    lcd.write(B_CGRAM_slots[1]);
+    lcd.setCursor(2,1);
+    lcd.write(B_CGRAM_slots[2]);
+    lcd.write(B_CGRAM_slots[3]);
+    lcd.setCursor(4,0);
+    lcd.write(B_CGRAM_slots[0]);
+    lcd.write(B_CGRAM_slots[1]);
+    lcd.setCursor(4,1);
+    lcd.write(B_CGRAM_slots[2]);
+    lcd.write(B_CGRAM_slots[3]);
     
-  B_anim_path_progress = elapsed_ms / 10;
+    // Update symbol buffers, load into CGRAM
+    for (uint8_t i = 0; i<4; i++) {
+      B_parts[i].write_data(B_buffers[i]); 
+      lcd.createChar(B_CGRAM_slots[i], B_buffers[i]);
+    }
+
+    constexpr size_t path_len = sizeof(B_anim_path) / sizeof(B_anim_path[0]);
+    constexpr int fade_step = 15;  // Opacity drop per pixel (10 = 10-pixel fade, 15 = ~7-pixel fade)
+    constexpr uint32_t max_progress = (path_len - 1) * fade_step;
+
+    uint32_t progress = std::min<uint32_t>(elapsed_ms / 3, max_progress);
+
+    constexpr size_t fade_span = (100 + fade_step - 1) / fade_step + 1;
+    size_t bound = std::min<size_t>(progress / fade_step + fade_span, path_len);
+
+    for (size_t i = 0; i < bound; i++) {
+      uint8_t path_part = B_anim_path[i].first;
+      std::pair<uint8_t, uint8_t> coords = B_anim_path[i].second;
+
+      int delta = static_cast<int>(i * fade_step) - static_cast<int>(progress);
+      uint8_t opacity = (delta <= 0) ? 100 : (delta >= 100 ? 0 : 100 - delta);
+
+      B_parts[path_part].set_pixel(coords.first, coords.second, opacity);
+    }
+  } else if (elapsed_ms < 4250) { // "EST" appears
+    lcd.clear();
+    // Write B characters to screen
+    lcd.setCursor(0,0);
+    lcd.write(B_CGRAM_slots[0]);
+    lcd.write(B_CGRAM_slots[1]);
+    lcd.setCursor(0,1);
+    lcd.write(B_CGRAM_slots[2]);
+    lcd.write(B_CGRAM_slots[3]);
+    lcd.print("EST");
+
+    lcd.setCursor(5,0);
+    lcd.write(B_CGRAM_slots[0]);
+    lcd.write(B_CGRAM_slots[1]);
+    lcd.setCursor(5,1);
+    lcd.write(B_CGRAM_slots[2]);
+    lcd.write(B_CGRAM_slots[3]);
+    lcd.setCursor(7,0);
+    lcd.write(B_CGRAM_slots[0]);
+    lcd.write(B_CGRAM_slots[1]);
+    lcd.setCursor(7,1);
+    lcd.write(B_CGRAM_slots[2]);
+    lcd.write(B_CGRAM_slots[3]);
+  } else if (elapsed_ms < 5000) { // "EFORE" appears
+    lcd.clear();
+    // Write B characters to screen
+    lcd.setCursor(0,0);
+    lcd.write(B_CGRAM_slots[0]);
+    lcd.write(B_CGRAM_slots[1]);
+    lcd.setCursor(0,1);
+    lcd.write(B_CGRAM_slots[2]);
+    lcd.write(B_CGRAM_slots[3]);
+    lcd.print("EST");
+
+    lcd.setCursor(5,0);
+    lcd.write(B_CGRAM_slots[0]);
+    lcd.write(B_CGRAM_slots[1]);
+    lcd.setCursor(5,1);
+    lcd.write(B_CGRAM_slots[2]);
+    lcd.write(B_CGRAM_slots[3]);
+    lcd.print("EFORE");
+
+    lcd.setCursor(12,0);
+    lcd.write(B_CGRAM_slots[0]);
+    lcd.write(B_CGRAM_slots[1]);
+    lcd.setCursor(12,1);
+    lcd.write(B_CGRAM_slots[2]);
+    lcd.write(B_CGRAM_slots[3]);
+  } else { // "RO" appears
+    lcd.setCursor(14,1);
+    lcd.print("RO");
+  }
 }
 
 void setup() {
