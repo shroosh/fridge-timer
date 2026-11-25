@@ -19,6 +19,9 @@ uint32_t state_start_ms;  // Tracks start time of current rendering state
 // progress for the initial fade animation
 size_t B_anim_path_progress = 0;
 
+// Tracks how many animation stages have been completed
+size_t start_anim_stages_completed = 0;
+
 
 OpacitySymbol B_parts[4] = {};
 uint8_t B_buffers[4][8] = {0};
@@ -82,57 +85,74 @@ void start_animation(uint32_t elapsed_ms) {
 
       B_parts[path_part].set_pixel(coords.first, coords.second, opacity);
     }
+
+    start_anim_stages_completed = 1;
   } else if (elapsed_ms < 4250) { // "EST" appears
-    lcd.clear();
-    // Write B characters to screen
-    lcd.setCursor(0,0);
-    lcd.write(B_CGRAM_slots[0]);
-    lcd.write(B_CGRAM_slots[1]);
-    lcd.setCursor(0,1);
-    lcd.write(B_CGRAM_slots[2]);
-    lcd.write(B_CGRAM_slots[3]);
-    lcd.print("EST");
 
-    lcd.setCursor(5,0);
-    lcd.write(B_CGRAM_slots[0]);
-    lcd.write(B_CGRAM_slots[1]);
-    lcd.setCursor(5,1);
-    lcd.write(B_CGRAM_slots[2]);
-    lcd.write(B_CGRAM_slots[3]);
-    lcd.setCursor(7,0);
-    lcd.write(B_CGRAM_slots[0]);
-    lcd.write(B_CGRAM_slots[1]);
-    lcd.setCursor(7,1);
-    lcd.write(B_CGRAM_slots[2]);
-    lcd.write(B_CGRAM_slots[3]);
+    if (start_anim_stages_completed == 1) {
+      lcd.clear();
+      // Write B characters to screen
+      lcd.setCursor(0,0);
+      lcd.write(B_CGRAM_slots[0]);
+      lcd.write(B_CGRAM_slots[1]);
+      lcd.setCursor(0,1);
+      lcd.write(B_CGRAM_slots[2]);
+      lcd.write(B_CGRAM_slots[3]);
+      lcd.print("EST");
+
+      lcd.setCursor(5,0);
+      lcd.write(B_CGRAM_slots[0]);
+      lcd.write(B_CGRAM_slots[1]);
+      lcd.setCursor(5,1);
+      lcd.write(B_CGRAM_slots[2]);
+      lcd.write(B_CGRAM_slots[3]);
+      lcd.setCursor(7,0);
+      lcd.write(B_CGRAM_slots[0]);
+      lcd.write(B_CGRAM_slots[1]);
+      lcd.setCursor(7,1);
+      lcd.write(B_CGRAM_slots[2]);
+      lcd.write(B_CGRAM_slots[3]);
+
+      start_anim_stages_completed = 2;
+    }
+
   } else if (elapsed_ms < 5000) { // "EFORE" appears
-    lcd.clear();
-    // Write characters to screen
-    lcd.setCursor(0,0);
-    lcd.write(B_CGRAM_slots[0]);
-    lcd.write(B_CGRAM_slots[1]);
-    lcd.setCursor(0,1);
-    lcd.write(B_CGRAM_slots[2]);
-    lcd.write(B_CGRAM_slots[3]);
-    lcd.print("EST");
 
-    lcd.setCursor(5,0);
-    lcd.write(B_CGRAM_slots[0]);
-    lcd.write(B_CGRAM_slots[1]);
-    lcd.setCursor(5,1);
-    lcd.write(B_CGRAM_slots[2]);
-    lcd.write(B_CGRAM_slots[3]);
-    lcd.print("EFORE");
+    if (start_anim_stages_completed == 2) {
+      lcd.clear();
+      // Write characters to screen
+      lcd.setCursor(0,0);
+      lcd.write(B_CGRAM_slots[0]);
+      lcd.write(B_CGRAM_slots[1]);
+      lcd.setCursor(0,1);
+      lcd.write(B_CGRAM_slots[2]);
+      lcd.write(B_CGRAM_slots[3]);
+      lcd.print("EST");
 
-    lcd.setCursor(12,0);
-    lcd.write(B_CGRAM_slots[0]);
-    lcd.write(B_CGRAM_slots[1]);
-    lcd.setCursor(12,1);
-    lcd.write(B_CGRAM_slots[2]);
-    lcd.write(B_CGRAM_slots[3]);
+      lcd.setCursor(5,0);
+      lcd.write(B_CGRAM_slots[0]);
+      lcd.write(B_CGRAM_slots[1]);
+      lcd.setCursor(5,1);
+      lcd.write(B_CGRAM_slots[2]);
+      lcd.write(B_CGRAM_slots[3]);
+      lcd.print("EFORE");
+
+      lcd.setCursor(12,0);
+      lcd.write(B_CGRAM_slots[0]);
+      lcd.write(B_CGRAM_slots[1]);
+      lcd.setCursor(12,1);
+      lcd.write(B_CGRAM_slots[2]);
+      lcd.write(B_CGRAM_slots[3]);
+
+      start_anim_stages_completed = 3;
+    }
+
   } else { // "RO" appears
-    lcd.setCursor(14,1);
-    lcd.print("RO");
+    if (start_anim_stages_completed == 3) {
+      lcd.setCursor(14,1);
+      lcd.print("RO");
+      start_anim_stages_completed = 4;
+    }
   }
 }
 
