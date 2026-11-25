@@ -145,7 +145,7 @@ const uint8_t broadcastAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}; // MAC
 void onReceive(const esp_now_recv_info_t *info, const uint8_t *data, int len) {
   Message msg;
   memcpy(&msg, data, sizeof(msg));
-  if (msg.type == Type::TAG) {
+  if (msg.type == Type::CENTRAL_UNIT) {
     switch (msg.state)
     {
     case State::ACTIVATE:
