@@ -58,7 +58,59 @@ const uint8_t B_bottomright[8] = {
   0b00000
 };
 
-Symbol B_parts[4] = {Symbol(B_topleft), Symbol(B_topright), Symbol(B_bottomleft), Symbol(B_bottomright)};
+constexpr std::pair<int, std::pair<int, int>> B_anim_path[76] = {
+  // 1. Top bar: left -> right (Part 0)
+  {0, {0, 1}}, {0, {0, 2}},
+  {0, {1, 1}}, {0, {1, 2}},
+  {0, {2, 1}}, {0, {2, 2}},
+  {0, {3, 1}}, {0, {3, 2}},
+  {0, {4, 1}}, {0, {4, 2}},
+
+  // 2. Upper-right lobe: top -> outer curve -> waist (Part 1)
+  {1, {0, 1}},
+  {1, {0, 2}}, {1, {1, 2}},
+  {1, {0, 3}}, {1, {1, 3}}, {1, {2, 3}},
+  {1, {1, 4}}, {1, {2, 4}},
+  {1, {1, 5}}, {1, {2, 5}},
+  {1, {2, 6}}, {1, {1, 6}}, {1, {0, 6}},
+  {1, {1, 7}}, {1, {0, 7}},
+
+  // 3. Lower-right lobe: waist -> outer curve -> bottom (Part 3)
+  {3, {0, 0}}, {3, {1, 0}}, {3, {2, 0}},
+  {3, {1, 1}}, {3, {2, 1}}, {3, {3, 1}},
+  {3, {2, 2}}, {3, {3, 2}},
+  {3, {2, 3}}, {3, {3, 3}},
+  {3, {2, 4}}, {3, {3, 4}},
+  {3, {3, 5}}, {3, {2, 5}}, {3, {1, 5}},
+  {3, {2, 6}}, {3, {1, 6}}, {3, {0, 6}},
+
+  // 4. Bottom bar: right -> left (Part 2)
+  {2, {4, 6}}, {2, {3, 6}}, {2, {2, 6}}, {2, {1, 6}}, {2, {0, 6}},
+
+  // 5. Left vertical spine: bottom -> top (Part 2 -> Part 0)
+  {2, {0, 5}}, {2, {1, 5}},
+  {2, {0, 4}}, {2, {1, 4}},
+  {2, {0, 3}}, {2, {1, 3}},
+  {2, {0, 2}}, {2, {1, 2}},
+  {2, {0, 1}}, {2, {1, 1}},
+  {2, {0, 0}}, {2, {1, 0}},
+  {0, {0, 7}}, {0, {1, 7}},
+  {0, {0, 6}}, {0, {1, 6}},
+  {0, {0, 5}}, {0, {1, 5}},
+  {0, {0, 4}}, {0, {1, 4}},
+  {0, {0, 3}}, {0, {1, 3}},
+
+  // 6. Middle crossbar: left -> right into the waist (Part 0 & Part 2)
+  {0, {2, 7}}, {2, {2, 0}},
+  {0, {3, 7}}, {2, {3, 0}},
+  {0, {4, 7}}, {2, {4, 0}}
+};
+
+size_t B_anim_path_progress = 0;
+
+
+OpacitySymbol B_parts[4] = {};
+uint8_t B_buffers[4][8] = {0};
 uint8_t B_CGRAM_slots[4] = {0, 1, 2, 3};
 
 
@@ -72,6 +124,59 @@ void set_rendering_state(RenderingState new_state) {
   lcd.clear();
 }
 
+void start_animation(uint32_t elapsed_ms) {
+  // Write B characters to screen
+  lcd.setCursor(0,0);
+  lcd.write(B_CGRAM_slots[0]);
+  lcd.write(B_CGRAM_slots[1]);
+  lcd.setCursor(0,1);
+  lcd.write(B_CGRAM_slots[2]);
+  lcd.write(B_CGRAM_slots[3]);
+  lcd.setCursor(2,0);
+  lcd.write(B_CGRAM_slots[0]);
+  lcd.write(B_CGRAM_slots[1]);
+  lcd.setCursor(2,1);
+  lcd.write(B_CGRAM_slots[2]);
+  lcd.write(B_CGRAM_slots[3]);
+  lcd.setCursor(4,0);
+  lcd.write(B_CGRAM_slots[0]);
+  lcd.write(B_CGRAM_slots[1]);
+  lcd.setCursor(4,1);
+  lcd.write(B_CGRAM_slots[2]);
+  lcd.write(B_CGRAM_slots[3]);
+  
+  // Update symbol buffers, load into CGRAM
+  for (uint8_t i = 0; i<4; i++) {
+    B_parts[i].write_data(B_buffers[i]); 
+    lcd.createChar(B_CGRAM_slots[i], B_buffers[i]);
+  }
+
+  // Element count
+  constexpr size_t path_len = sizeof(B_anim_path) / sizeof(B_anim_path[0]);
+
+  // Guard
+  if (B_anim_path_progress > path_len) {
+    return;
+  }
+
+  size_t i = 0;
+  size_t bound = std::min(B_anim_path_progress, path_len);
+
+  while (i < bound) {
+      
+    // Get pixel location
+    uint8_t path_part = B_anim_path[i].first;
+    std::pair<uint8_t, uint8_t> coords = B_anim_path[i].second;
+
+    //Set opacity
+    B_parts[path_part].set_pixel(coords.first, coords.second, 100);
+
+    i++;
+  }
+    
+  B_anim_path_progress = elapsed_ms / 10;
+}
+
 void setup() {
   // Turn on virtual ground pins BEFORE starting the LCD
   pinMode(25, OUTPUT);
@@ -83,10 +188,6 @@ void setup() {
 
   lcd.begin(16, 2);
 
-  // Fill CGRAM with B parts
-  for (uint8_t i = 0; i<4; i++) {
-    lcd.createChar(B_CGRAM_slots[i], B_parts[i].get_data());
-  }
 
   // Begin start animation
   set_rendering_state(START_ANIMATION);
@@ -101,31 +202,12 @@ void loop() {
   uint32_t state_elapsed_ms = millis() - state_start_ms;
 
   switch (current_rendering_state) {
-    case START_ANIMATION:
+    case START_ANIMATION: {
 
-      lcd.setCursor(0, 0);
-      lcd.write(B_CGRAM_slots[0]);
-      lcd.write(B_CGRAM_slots[1]);
-      lcd.setCursor(0, 1);
-      lcd.write(B_CGRAM_slots[2]);
-      lcd.write(B_CGRAM_slots[3]);
-      lcd.print("EST");
-      lcd.setCursor(5, 0);
-      lcd.write(B_CGRAM_slots[0]);
-      lcd.write(B_CGRAM_slots[1]);
-      lcd.setCursor(5, 1);
-      lcd.write(B_CGRAM_slots[2]);
-      lcd.write(B_CGRAM_slots[3]);
-      lcd.print("EFORE");
-      lcd.setCursor(12, 0);
-      lcd.write(B_CGRAM_slots[0]);
-      lcd.write(B_CGRAM_slots[1]);
-      lcd.setCursor(12, 1);
-      lcd.write(B_CGRAM_slots[2]);
-      lcd.write(B_CGRAM_slots[3]);
-      lcd.print("RO");
+      start_animation(state_elapsed_ms);
 
       break;
+    }
     case PASSIVE:
       // TODO: passive visuals
       break;
