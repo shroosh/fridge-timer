@@ -79,8 +79,14 @@ void updateSpeaker() {
 
 void setup() {
   Serial.begin(115200);
+  
   // WIFI
   setupWifi(centralAddress, onReceive);
+
+  #ifdef DEBUG
+  delay(300);
+  Serial.println(WiFi.macAddress());
+  #endif
 
   // LDR
   analogSetAttenuation(ADC_11db);
@@ -97,8 +103,8 @@ void loop() {
   updateSpeaker();
 
   unsigned long now = millis();
-  if (now - lastToggle >= BEEP_INTERVAL) {
-    lastToggle = now;
+  if (now - lastLightChange >= LIGHT_CHANGE_INTERVAL) {
+    lastLightChange = now;
     bool brightNow = isBright();
     if (brightNow != bright) {
       bright = brightNow;

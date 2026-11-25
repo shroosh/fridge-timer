@@ -162,7 +162,12 @@ void start_animation(uint32_t elapsed_ms) {
 
 // Wifi variables
 const uint8_t broadcastAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}; // MAC
-
+Message activate1 = {Type::TAG1, State::ACTIVATE};
+Message activate2 = {Type::TAG2, State::ACTIVATE};
+Message deactivate1 = {Type::TAG1, State::DEACTIVATE};
+Message deactivate2 = {Type::TAG2, State::DEACTIVATE};
+volatile bool pendingActivate = false;
+volatile bool pendingDeactivate = false;
 
 void onReceive(const esp_now_recv_info_t *info, const uint8_t *data, int len) {
   Message msg;
@@ -171,21 +176,15 @@ void onReceive(const esp_now_recv_info_t *info, const uint8_t *data, int len) {
     switch (msg.state)
     {
     case State::ACTIVATE:
-      Message activate1 = {Type::TAG1, State::ACTIVATE};
-      Message activate2 = {Type::TAG2, State::ACTIVATE};
-      esp_now_send(broadcastAddress, (uint8_t*)&activate1, sizeof(Message));
-      esp_now_send(broadcastAddress, (uint8_t*)&activate2, sizeof(Message));
+      pendingActivate = true;
       #ifdef DEBUG
       Serial.println("ACTIVE");
       #endif
       break;
     case State::DEACTIVATE:
-      Message deactivate1 = {Type::TAG1, State::DEACTIVATE};
-      Message deactivate2 = {Type::TAG2, State::DEACTIVATE};
-      esp_now_send(broadcastAddress, (uint8_t*)&deactivate1, sizeof(Message));
-      esp_now_send(broadcastAddress, (uint8_t*)&deactivate2, sizeof(Message));
+      pendingDeactivate = true;
       #ifdef DEBUG
-      Serial.println("ACTIVE");
+      Serial.println("DEACTIVE");
       #endif
       break;
     case State::CHECK_LIGHT:
@@ -195,6 +194,21 @@ void onReceive(const esp_now_recv_info_t *info, const uint8_t *data, int len) {
     default:
       break;
     }
+  }
+}
+
+void sendToTags() {
+  if (pendingActivate) {
+    pendingActivate = false;
+    esp_now_send(broadcastAddress, (uint8_t*)&activate1, sizeof(Message));
+    delay(5);  // small gap so the queue isn't overrun
+    esp_now_send(broadcastAddress, (uint8_t*)&activate2, sizeof(Message));
+  }
+  if (pendingDeactivate) {
+    pendingDeactivate = false;
+    esp_now_send(broadcastAddress, (uint8_t*)&deactivate1, sizeof(Message));
+    delay(5);
+    esp_now_send(broadcastAddress, (uint8_t*)&deactivate2, sizeof(Message));
   }
 }
 
@@ -224,9 +238,7 @@ void loop() {
   // other logic goes here
   //
   //
-  Message msg = {Type::CENTRAL_UNIT, State::ACTIVATE};
-
-  esp_now_send(broadcastAddress, (uint8_t*)&msg, sizeof(msg));
+  sendToTags();
 
   // Begin rendering phase
   uint32_t state_elapsed_ms = millis() - state_start_ms;
