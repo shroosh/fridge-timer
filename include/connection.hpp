@@ -2,7 +2,7 @@
 #include <WiFi.h>
 
 enum class State {ACTIVATE, DEACTIVATE, CHECK_LIGHT};
-enum class Type {CENTRAL_UNIT, TAG};
+enum class Type {CENTRAL_UNIT, TAG1, TAG2};
 
 typedef struct {
   Type type;   // 0 = from central, 1 = from node
