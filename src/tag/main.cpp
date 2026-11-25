@@ -88,9 +88,4 @@ void setup() {
 
 void loop() {
   updateSpeaker();
-  if (isBright()) {
-    current_state = State::ACTIVATE;
-  } else {
-    current_state = State::DEACTIVATE;
-  }
 }
