@@ -12,6 +12,8 @@ typedef struct {
 void setupWifi(const uint8_t (&mac)[6], esp_now_recv_cb_t onRecieve) {
     WiFi.mode(WIFI_STA);
 
+    esp_now_init();
+
     esp_now_register_recv_cb(onRecieve);
 
     esp_now_peer_info_t peer = {};

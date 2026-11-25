@@ -145,7 +145,7 @@ const uint8_t broadcastAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}; // MAC
 void onReceive(const esp_now_recv_info_t *info, const uint8_t *data, int len) {
   Message msg;
   memcpy(&msg, data, sizeof(msg));
-  if (msg.type == Type::CENTRAL_UNIT) {
+  if (msg.type == Type::TAG) {
     switch (msg.state)
     {
     case State::ACTIVATE:
@@ -186,6 +186,9 @@ void loop() {
   // other logic goes here
   //
   //
+  Message msg = {Type::CENTRAL_UNIT, State::ACTIVATE};
+
+  esp_now_send(broadcastAddress, (uint8_t*)&msg, sizeof(msg));
 
   // Begin rendering phase
   uint32_t state_elapsed_ms = millis() - state_start_ms;
