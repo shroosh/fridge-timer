@@ -234,6 +234,20 @@ void setup() {
   set_rendering_state(START_ANIMATION);
 }
 
+void formatTime(uint32_t total, char *out, size_t size) {
+    uint32_t days    = total / 86400;
+    uint32_t hours   = (total % 86400) / 3600;
+    uint32_t minutes = (total % 3600) / 60;
+    uint32_t seconds = total % 60;
+    snprintf(out, size, "%02lu:%02lu:%02lu:%02lu", days, hours, minutes, seconds);
+}
+
+// PRINTTIME THING:::
+// char buf[16];
+// formatTime(remainingSeconds, buf, sizeof(buf));
+// lcd.setCursor(0, 0);
+// lcd.print(buf);
+
 void loop() {
   // other logic goes here
   //
