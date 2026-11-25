@@ -1,7 +1,7 @@
 #include <esp_now.h>
 #include <WiFi.h>
 
-uint8_t broadcastAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+uint8_t broadcastAddress[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 typedef struct {
   uint8_t type;   // 0 = from central, 1 = from node
