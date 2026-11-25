@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <LiquidCrystal.h>
 
+#include "../include/connection.hpp"
 #include "symbol.hpp"
 #include "B_anim_path.cpp"
 
@@ -135,6 +136,34 @@ void start_animation(uint32_t elapsed_ms) {
   }
 }
 
+
+
+// Wifi variables
+const uint8_t broadcastAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}; // MAC
+
+
+void onReceive(const esp_now_recv_info_t *info, const uint8_t *data, int len) {
+  Message msg;
+  memcpy(&msg, data, sizeof(msg));
+  if (msg.type == Type::CENTRAL_UNIT) {
+    switch (msg.state)
+    {
+    case State::ACTIVATE:
+      // TODO: Code here
+      break;
+    case State::DEACTIVATE:
+      // TODO: Code here
+      break;
+    case State::CHECK_LIGHT:
+      // TODO: Code here
+      break;
+    
+    default:
+      break;
+    }
+  }
+}
+
 void setup() {
   // Turn on virtual ground pins BEFORE starting the LCD
   pinMode(25, OUTPUT);
@@ -146,6 +175,8 @@ void setup() {
 
   lcd.begin(16, 2);
 
+  // Wifi setup
+  setupWifi(broadcastAddress, onReceive);
 
   // Begin start animation
   set_rendering_state(START_ANIMATION);
