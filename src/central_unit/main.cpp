@@ -2,6 +2,7 @@
 #include <LiquidCrystal.h>
 
 #include "symbol.hpp"
+#include "B_anim_path.cpp"
 
 // Enum for different UI states, which tell loop what code to execute
 enum RenderingState {
@@ -14,98 +15,7 @@ enum RenderingState {
 RenderingState current_rendering_state;
 uint32_t state_start_ms;  // Tracks start time of current rendering state
 
-const uint8_t B_topleft[8] = {
-  0b00000, 
-  0b11111, 
-  0b11111, 
-  0b11000,
-  0b11000,
-  0b11000,
-  0b11000,
-  0b11111
-};
-
-const uint8_t B_topright[8] = {
-  0b00000, 
-  0b10000, 
-  0b11000, 
-  0b11100,
-  0b01100,
-  0b01100,
-  0b11100,
-  0b11000
-};
-
-const uint8_t B_bottomleft[8] = {
-  0b11111, 
-  0b11000, 
-  0b11000, 
-  0b11000,
-  0b11000,
-  0b11000,
-  0b11111,
-  0b00000
-};
-
-const uint8_t B_bottomright[8] = {
-  0b11100, 
-  0b01110, 
-  0b00110, 
-  0b00110,
-  0b00110,
-  0b01110,
-  0b11100,
-  0b00000
-};
-
-constexpr std::pair<int, std::pair<int, int>> B_anim_path[76] = {
-  // 1. Top bar: left -> right (Part 0)
-  {0, {0, 1}}, {0, {0, 2}},
-  {0, {1, 1}}, {0, {1, 2}},
-  {0, {2, 1}}, {0, {2, 2}},
-  {0, {3, 1}}, {0, {3, 2}},
-  {0, {4, 1}}, {0, {4, 2}},
-
-  // 2. Upper-right lobe: top -> outer curve -> waist (Part 1)
-  {1, {0, 1}},
-  {1, {0, 2}}, {1, {1, 2}},
-  {1, {0, 3}}, {1, {1, 3}}, {1, {2, 3}},
-  {1, {1, 4}}, {1, {2, 4}},
-  {1, {1, 5}}, {1, {2, 5}},
-  {1, {2, 6}}, {1, {1, 6}}, {1, {0, 6}},
-  {1, {1, 7}}, {1, {0, 7}},
-
-  // 3. Lower-right lobe: waist -> outer curve -> bottom (Part 3)
-  {3, {0, 0}}, {3, {1, 0}}, {3, {2, 0}},
-  {3, {1, 1}}, {3, {2, 1}}, {3, {3, 1}},
-  {3, {2, 2}}, {3, {3, 2}},
-  {3, {2, 3}}, {3, {3, 3}},
-  {3, {2, 4}}, {3, {3, 4}},
-  {3, {3, 5}}, {3, {2, 5}}, {3, {1, 5}},
-  {3, {2, 6}}, {3, {1, 6}}, {3, {0, 6}},
-
-  // 4. Bottom bar: right -> left (Part 2)
-  {2, {4, 6}}, {2, {3, 6}}, {2, {2, 6}}, {2, {1, 6}}, {2, {0, 6}},
-
-  // 5. Left vertical spine: bottom -> top (Part 2 -> Part 0)
-  {2, {0, 5}}, {2, {1, 5}},
-  {2, {0, 4}}, {2, {1, 4}},
-  {2, {0, 3}}, {2, {1, 3}},
-  {2, {0, 2}}, {2, {1, 2}},
-  {2, {0, 1}}, {2, {1, 1}},
-  {2, {0, 0}}, {2, {1, 0}},
-  {0, {0, 7}}, {0, {1, 7}},
-  {0, {0, 6}}, {0, {1, 6}},
-  {0, {0, 5}}, {0, {1, 5}},
-  {0, {0, 4}}, {0, {1, 4}},
-  {0, {0, 3}}, {0, {1, 3}},
-
-  // 6. Middle crossbar: left -> right into the waist (Part 0 & Part 2)
-  {0, {2, 7}}, {2, {2, 0}},
-  {0, {3, 7}}, {2, {3, 0}},
-  {0, {4, 7}}, {2, {4, 0}}
-};
-
+// progress for the initial fade animation
 size_t B_anim_path_progress = 0;
 
 
