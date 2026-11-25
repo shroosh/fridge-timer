@@ -4,7 +4,7 @@
 #include "symbol.hpp"
 #include "B_anim_path.cpp"
 
-// Enum for different UI states, which tell loop what code to execute
+// Enum for different UI states, which tells loop function what code to execute
 enum RenderingState {
   START_ANIMATION,  // Plays brief animation upon starting the device
   PASSIVE,          // Shows most relevant tag info
@@ -106,7 +106,7 @@ void start_animation(uint32_t elapsed_ms) {
     lcd.write(B_CGRAM_slots[3]);
   } else if (elapsed_ms < 5000) { // "EFORE" appears
     lcd.clear();
-    // Write B characters to screen
+    // Write characters to screen
     lcd.setCursor(0,0);
     lcd.write(B_CGRAM_slots[0]);
     lcd.write(B_CGRAM_slots[1]);
