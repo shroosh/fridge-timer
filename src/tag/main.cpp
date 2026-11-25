@@ -1,28 +1,96 @@
-#include <Arduino.h>
+#include "../include/connection.hpp"
 
-const int LDR_PIN = 34;
-const int LED_PIN = 21;
-const int lightTreshold = 2000;
+// Constants
+const uint8_t centralAddress[] = {0x44, 0x17, 0x93, 0x5C, 0x0A, 0x70}; // MAC
 
-void setup() {
-  Serial.begin(115200);
-  analogSetAttenuation(ADC_11db);
-  pinMode(LED_PIN, OUTPUT);
+const int LED_PIN = 21;                   // Pin number
+const int SPEAKER_PIN = 23;               // Pin number
+const int LDR_PIN = 34;                   // Pin number
+const int LIGHT_TRESHOLD = 2000;          // mV
+const unsigned long BEEP_INTERVAL = 500;  // ms
+const int BEEP_FREQ = 3500;               // Hz
+
+//const uint_8 BRIGHT_MESSAGE 
+
+// VARIABLES
+unsigned long lastToggle = 0;
+bool speakerOn = false;
+State current_state = State::DEACTIVATE;
+
+
+void onReceive(const esp_now_recv_info_t *info, const uint8_t *data, int len) {
+  Message msg;
+  memcpy(&msg, data, sizeof(msg));
+  if (msg.type == Type::CENTRAL_UNIT) {
+    switch (msg.state)
+    {
+    case State::ACTIVATE:
+      current_state = State::ACTIVATE;
+      break;
+    case State::DEACTIVATE:
+      current_state = State::DEACTIVATE;
+      break;
+    case State::CHECK_LIGHT:
+      /* code */
+      break;
+    
+    default:
+      break;
+    }
+  }
 }
 
-void loop() {
+bool isBright() {
   int lightLevel = analogReadMilliVolts(LDR_PIN);
-
-  if (lightLevel <  lightTreshold) {
-    digitalWrite(LED_PIN, HIGH);
-  } else {
-    digitalWrite(LED_PIN, LOW);
-  }
-
 
   #ifdef DEBUG
   Serial.printf("%d mV\n", lightLevel);
   #endif
 
-  delay(500);
+  return lightLevel <  LIGHT_TRESHOLD;
+}
+
+
+
+void updateSpeaker() {
+    if (current_state == State::ACTIVATE) {
+        digitalWrite(LED_PIN, HIGH);
+
+        unsigned long now = millis();
+        if (now - lastToggle >= BEEP_INTERVAL) {
+            lastToggle = now;
+            speakerOn = !speakerOn;
+            ledcWriteTone(SPEAKER_PIN, speakerOn ? BEEP_FREQ : 0);
+        }
+    } else {
+        digitalWrite(LED_PIN, LOW);
+        if (speakerOn) {
+            ledcWriteTone(SPEAKER_PIN, 0);
+            speakerOn = false;
+        }
+    }
+}
+
+void setup() {
+  // WIFI
+  setupWifi(centralAddress, onReceive);
+
+  // LDR
+  analogSetAttenuation(ADC_11db);
+
+  // LED
+  pinMode(LED_PIN, OUTPUT);
+
+  // SPEAKER
+  ledcAttach(SPEAKER_PIN, 2000, 8);
+  ledcWriteTone(SPEAKER_PIN, 0);
+}
+
+void loop() {
+  updateSpeaker();
+  if (isBright()) {
+    current_state = State::ACTIVATE;
+  } else {
+    current_state = State::DEACTIVATE;
+  }
 }
